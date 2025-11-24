@@ -11,8 +11,8 @@ public class Main extends JFrame {
     NavigationManager navigationManager = new NavigationManager(this);
 
     public Main() throws URISyntaxException {
-        //URI serverUri = new URI("ws://8.tcp.us-cal-1.ngrok.io:15069");
-        URI serverUri = new URI("ws://localhost:8887");
+        URI serverUri = new URI("ws://8.tcp.us-cal-1.ngrok.io:15069");
+        //URI serverUri = new URI("ws://localhost:8887");
         initJPanels();
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
@@ -31,7 +31,6 @@ public class Main extends JFrame {
 
         navigationManager.navigateTo("login","Picopark - Login");
         setVisible(true);
-
     }
 
     private void initJPanels(){

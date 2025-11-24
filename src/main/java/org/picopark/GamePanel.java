@@ -5,11 +5,13 @@ import org.connection.PlayerData;
 
 import org.tiles.TilesEvents;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
+import java.util.Objects;
 
 public class GamePanel extends JPanel{
     private GameState gameState = GameState.RUNNING;
@@ -19,6 +21,8 @@ public class GamePanel extends JPanel{
 
     final int maxRowsScreen = 10;
     final int maxColsScreen = 20;
+
+    private String gameOverBy = "";
 
     //Estas medidas son dinamicas provienen del mapa del servidor.
     private int maxRenWorld;
@@ -52,7 +56,7 @@ public class GamePanel extends JPanel{
 
     private final NavigationManager navigationManager;
     private final Connection connection;
-    TilesEvents tilesEvents;
+    TilesEvents tilesEvents = new TilesEvents(this);;
 
     public GamePanel(NavigationManager navigationManager, Connection connection) {
         this.navigationManager = navigationManager;
@@ -65,11 +69,9 @@ public class GamePanel extends JPanel{
         widthWorld = sizeTile * maxColWorld;
         heightWorld = sizeTile * maxRenWorld;
 
-        tilesEvents = new TilesEvents(this, mapa);
-
         this.navigationManager.resizeWindow(widthScreen, heightScreen);
 
-        this.setBackground(Color.BLACK);
+        this.setBackground(new Color(247, 247, 247));
         this.setDoubleBuffered(true);
 
         // Configurar el InputMap y ActionMap
@@ -154,7 +156,7 @@ public class GamePanel extends JPanel{
         actionMap.put("exitPressed", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if(GamePanel.this.gameState != GameState.MENU) return;
+                if(GamePanel.this.gameState != GameState.MENU && GamePanel.this.gameState != GameState.WINNER) return;
                 GamePanel.this.connection.leaveRoom();
                 GamePanel.this.navigationManager.navigateBack();
             }
@@ -171,7 +173,12 @@ public class GamePanel extends JPanel{
         });
     }
 
-
+    public void setNewWorldDimensions(int ren, int col) {
+        this.maxRenWorld = ren;
+        this.maxColWorld = col;
+        widthWorld = sizeTile * maxColWorld;
+        heightWorld = sizeTile * maxRenWorld;
+    }
 
     public void setStateGame(GameState gameState) {
         this.gameState = gameState;
@@ -181,6 +188,18 @@ public class GamePanel extends JPanel{
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
+        if(gameState == GameState.GAME_OVER){
+            try{
+                BufferedImage image = ImageIO
+                        .read((Objects
+                                .requireNonNull
+                                        (this.getClass().getResourceAsStream("/assets-entities/dead.png"))));
+                this.drawGameOver(g2d, this.gameOverBy, image);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+            return;
+        }
 
         PlayerData player = this.connection.getCurrentPlayer();
         float cameraX = player.getWorldX() - (widthScreen /2 - (sizeTile /2));
@@ -192,9 +211,10 @@ public class GamePanel extends JPanel{
         if(cameraX > this.widthWorld - this.widthScreen) cameraX = this.widthWorld - this.widthScreen;
         if(cameraY > this.heightWorld - this.heightScreen) cameraY = this.heightWorld - this.heightScreen;
 
-        tilesEvents.draw(g2d, (int)cameraX, (int)cameraY);
+        tilesEvents.draw(g2d, (int)cameraX, (int)cameraY, this.connection.getCurrentWorld());
 
         for (PlayerData otherPlayers : this.connection.getPlayers()){
+            if(!otherPlayers.isVisible) continue;
             BufferedImage sprite = otherPlayers.getDirectionImage();
 
             float worldX = otherPlayers.getWorldX();
@@ -239,8 +259,53 @@ public class GamePanel extends JPanel{
         if (gameState == GameState.MENU) drawMenuOverlay(g2d);
 
         if(gameState == GameState.WINNER) drawWinOverlay(g2d);
-
     }
+
+    private void drawGameOver(Graphics2D g2d, String loserName, BufferedImage deadSprite) {
+
+        // Fondo blanco completo
+        g2d.setColor(Color.WHITE);
+        g2d.fillRect(0, 0, getWidth(), getHeight());
+
+        // === GAME OVER gigante centrado ===
+        g2d.setFont(new Font("Arial", Font.BOLD, 72));
+        String title = "GAME OVER";
+
+        FontMetrics fm = g2d.getFontMetrics();
+        int titleX = (getWidth() - fm.stringWidth(title)) / 2;
+        int titleY = 120;
+
+        // Sombra ligera para que se vea bonito
+        g2d.setColor(new Color(0, 0, 0, 80));
+        g2d.drawString(title, titleX + 4, titleY + 4);
+
+        // Texto principal negro
+        g2d.setColor(Color.BLACK);
+        g2d.drawString(title, titleX, titleY);
+
+        // === SPRITE MUERTO CENTRADO ===
+        if (deadSprite != null) {
+            int spriteWidth = deadSprite.getWidth() * 4;   // agrandar 4x
+            int spriteHeight = deadSprite.getHeight() * 4;
+
+            int spriteX = (getWidth() - spriteWidth) / 2;
+            int spriteY = titleY + 40;
+
+            g2d.drawImage(deadSprite, spriteX, spriteY, spriteWidth, spriteHeight, null);
+        }
+
+        // === Nombre del culpable ===
+        g2d.setFont(new Font("Arial", Font.BOLD, 32));
+        String caused = loserName + " provocó el Game Over";
+
+        FontMetrics fm2 = g2d.getFontMetrics();
+        int textX = (getWidth() - fm2.stringWidth(caused)) / 2;
+        int textY = getHeight() - 120;
+
+        g2d.setColor(Color.BLACK);
+        g2d.drawString(caused, textX, textY);
+    }
+
 
     private void drawMenuOverlay(Graphics2D g2d) {
         // Fondo semitransparente
@@ -285,7 +350,7 @@ public class GamePanel extends JPanel{
         );
 
         // Texto secundario
-        String sub = "Presiona [R] para reiniciar";
+        String sub = "Presiona [S] para salir";
         g2d.setFont(new Font("Arial", Font.PLAIN, 28));
         int subWidth = g2d.getFontMetrics().stringWidth(sub);
 
@@ -302,35 +367,59 @@ public class GamePanel extends JPanel{
         Font originalFont = g2d.getFont();
         g2d.setFont(new Font("Arial", Font.BOLD, 13));
 
-        // Medir el texto para centrarlo
         FontMetrics fm = g2d.getFontMetrics();
-        // Dibujar sombra/contorno para mejor legibilidad
-        g2d.setColor(Color.BLACK);
-        g2d.drawString("Usuario conectado : " + this.connection.getUsername(), 11, 21); // Sombra
 
-        // Dibujar texto principal
-        g2d.setColor(Color.WHITE);
-        g2d.drawString("Usuario conectado : " + connection.getUsername(), 10, 20);
+        // ==== COLOR BASE PARA FONDOS BLANCOS ====
+        Color textColor = new Color(20, 20, 20);      // Negro suave
+        Color shadowColor = new Color(255, 255, 255); // Blanco puro como sombra
 
-        String labelResume = "Presiona 'M' o 'ESCAPE' para pausar  el juego.";
+        // ---- Texto izquierda: Usuario conectado ----
+        String overlayLeftText = "Usuario conectado : " + connection.getUsername();
+        if(!this.connection.observerPlayerName.isEmpty()){
+            overlayLeftText = "Observando a usuario :" + this.connection.observerPlayerName;
+        }
+
+
+        // Sombra
+        g2d.setColor(shadowColor);
+        g2d.drawString(overlayLeftText, 11, 21);
+
+        // Texto
+        g2d.setColor(textColor);
+        g2d.drawString(overlayLeftText, 10, 20);
+
+        // ---- Texto derecha: Pausar juego ----
+        String labelResume = "Presiona 'M' o 'ESCAPE' para pausar el juego.";
         int textWidth = fm.stringWidth(labelResume);
 
-        int x = this.widthScreen - textWidth - 10; // margen de 10px
+        int x = this.widthScreen - textWidth - 10;
         int y = 20;
 
         // Sombra
-        g2d.setColor(Color.BLACK);
+        g2d.setColor(shadowColor);
         g2d.drawString(labelResume, x + 1, y + 1);
 
         // Texto principal
-        g2d.setColor(Color.WHITE);
+        g2d.setColor(textColor);
         g2d.drawString(labelResume, x, y);
 
-        // Restaurar fuente original
         g2d.setFont(originalFont);
     }
 
     public void addChatMessage(String user, String message) {}
+
+    public void gameOver(String gameOverBy) {
+        this.gameState = GameState.GAME_OVER;
+        this.gameOverBy = gameOverBy;
+    }
+
+    public void restartGame(){
+        this.setStateGame(GameState.RUNNING);
+    }
+
+    public void gameWin(){
+        this.setStateGame(GameState.WINNER);
+    }
 }
 
 enum GameState {

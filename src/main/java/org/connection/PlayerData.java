@@ -16,6 +16,7 @@ public class PlayerData {
     String id;
     String username;
     String direction = "stop";
+    public boolean isVisible = true;
     float x;
     float y;
     int indexSprite = 1;

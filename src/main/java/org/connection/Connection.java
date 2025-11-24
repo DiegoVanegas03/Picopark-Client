@@ -28,6 +28,8 @@ public class Connection extends WebSocketClient {
     private int[][] currentWorld;
     private List<RoomInfo> rooms = new ArrayList<>();
 
+    public String observerPlayerName = "";
+
     public Connection(URI serverUri, NavigationManager navigationManager) {
         super(serverUri);
         this.navigationManager = navigationManager;
@@ -58,6 +60,18 @@ public class Connection extends WebSocketClient {
                 case "roomJoined":
                     handleRoomJoined(data);
                     break;
+                case "startGame":
+                    handleStartGame(data);
+                    break;
+                case "gameOver":
+                    handleGameOver(data);
+                    break;
+                case "gameWin":
+                    handleGameWin();
+                    break;
+                case "restartGame":
+                    handleRestartGame();
+                    break;
                 case "playerJoined":
                     handlePlayerJoined(data);
                     break;
@@ -77,6 +91,36 @@ public class Connection extends WebSocketClient {
         } catch (Exception e) {
             System.err.println("Error procesando mensaje: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    private void handleGameWin() {
+        JPanel panel  = navigationManager.getPanel("gamePanel");
+        if(panel instanceof GamePanel)
+            ((GamePanel) panel).gameWin();
+    }
+
+    private void handleRestartGame() {
+        JPanel panel  = navigationManager.getPanel("gamePanel");
+        if(panel instanceof GamePanel)
+            ((GamePanel) panel).restartGame();
+    }
+
+    private void handleGameOver(JsonObject data) {
+        String userName = data.get("userName").getAsString();
+        JPanel panel  = navigationManager.getPanel("gamePanel");
+        if(panel instanceof GamePanel)
+            ((GamePanel) panel).gameOver(userName);
+    }
+
+    private void handleStartGame(JsonObject data) {
+        int[][] world = gson.fromJson(data.get("world"), int[][].class);
+        this.currentWorld = world;
+
+        JPanel panel  = navigationManager.getPanel("gamePanel");
+        if(panel instanceof GamePanel) {
+            ((GamePanel) panel).setNewWorldDimensions(world.length, world[0].length);
+            panel.repaint();
         }
     }
 
@@ -189,6 +233,7 @@ public class Connection extends WebSocketClient {
                 player.x = playerObj.get("x").getAsFloat();
                 player.y = playerObj.get("y").getAsFloat();
                 player.direction = playerObj.get("direction").getAsString();
+                player.isVisible = playerObj.get("isVisible").getAsBoolean();
             }
         });
 
@@ -227,7 +272,47 @@ public class Connection extends WebSocketClient {
     }
 
     public PlayerData getCurrentPlayer() {
-        return players.get(this.userId);
+        PlayerData currentPlayer = players.get(this.userId);
+
+        // Si el jugador actual es visible, retornarlo
+        if (currentPlayer != null && currentPlayer.isVisible) {
+            return currentPlayer;
+        }
+
+        // Si no es visible, buscar el jugador visible más cercano
+        PlayerData closestVisiblePlayer = null;
+        float minDistance = Float.MAX_VALUE;
+
+        for (PlayerData player : players.values()) {
+            // Saltar jugadores no visibles o el mismo jugador
+            if (!player.isVisible || player.id.equals(this.userId)) {
+                continue;
+            }
+
+            // Calcular distancia al jugador actual
+            float distance;
+            if (currentPlayer != null) {
+                float dx = player.x - currentPlayer.x;
+                float dy = player.y - currentPlayer.y;
+                distance = (float) Math.sqrt(dx * dx + dy * dy);
+            } else {
+                // Si currentPlayer es null, usar distancia al origen
+                distance = (float) Math.sqrt(player.x * player.x + player.y * player.y);
+            }
+
+            // Actualizar el más cercano
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestVisiblePlayer = player;
+            }
+        }
+
+        if(closestVisiblePlayer != null) {
+            observerPlayerName =  closestVisiblePlayer.username;
+            return closestVisiblePlayer;
+        }
+
+        return  currentPlayer;
     }
 
     public List<PlayerData> getPlayers() {
