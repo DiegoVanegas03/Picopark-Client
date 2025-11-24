@@ -36,7 +36,7 @@ public class Main extends JFrame {
 
     private void initJPanels(){
 
-        navigationManager.registerPanel("rooms", ()-> new RoomsPanel(navigationManager, connection));
+        navigationManager.registerPanel("rooms", ()-> new RoomsPanel(connection));
         navigationManager.registerPanel("login", ()->new LoginPanel(this.connection));
         navigationManager.registerPanel("gamePanel",
                 ()-> new GamePanel(navigationManager,connection), false);

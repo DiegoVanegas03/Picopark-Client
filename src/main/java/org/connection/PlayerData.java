@@ -20,6 +20,10 @@ public class PlayerData {
     float y;
     int indexSprite = 1;
 
+
+    private long lastSpriteUpdate = 0; // última vez que cambió el sprite
+    private long spriteDelay = 200; // tiempo en ms entre cambios de sprite
+
     PlayerData(String id, String username, float x, float y) {
         this.id = id;
         this.username = username;
@@ -28,7 +32,6 @@ public class PlayerData {
         this.getSpritesImages();
     }
 
-    public String getId(){return this.id;}
     public String getUsername(){return this.username;}
 
     public float getWorldX(){return this.x;}
@@ -65,5 +68,13 @@ public class PlayerData {
             };
             default ->spriteStop;
         };
+    }
+
+    public void updateSprite() {
+        long now = System.currentTimeMillis();
+        if (now - lastSpriteUpdate >= spriteDelay) {
+            indexSprite = indexSprite == 1 ? 2 : 1; // alterna sprites
+            lastSpriteUpdate = now;
+        }
     }
 }
