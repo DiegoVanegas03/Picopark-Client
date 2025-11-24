@@ -168,6 +168,7 @@ public class Connection extends WebSocketClient {
     }
 
     private void handlePlayerLeft(JsonObject data) {
+        System.out.println("Desconectado del servidor: " + data.toString());
         String playerId = data.get("userId").getAsString();
         String playerUsername = data.get("username").getAsString();
 
@@ -193,6 +194,7 @@ public class Connection extends WebSocketClient {
 
         JPanel panel  = navigationManager.getPanel("gamePanel");
         if(panel instanceof GamePanel) {
+            players.values().forEach(PlayerData::updateSprite);
             panel.repaint();
         }
     }
@@ -263,6 +265,10 @@ public class Connection extends WebSocketClient {
 
     public void jump() {
         sendMessage("jump", new HashMap<>());
+    }
+
+    public void leaveRoom(){
+        sendMessage("leaveRoom", new HashMap<>());
     }
 
     public void sendChat(String message) {

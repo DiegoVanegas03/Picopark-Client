@@ -7,7 +7,7 @@ import org.tiles.TilesEvents;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.KeyAdapter;
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 
@@ -52,10 +52,6 @@ public class GamePanel extends JPanel{
 
     private final NavigationManager navigationManager;
     private final Connection connection;
-    IOEventsCompact ioEventsCompact;
-
-    //Player player;
-
     TilesEvents tilesEvents;
 
     public GamePanel(NavigationManager navigationManager, Connection connection) {
@@ -76,54 +72,103 @@ public class GamePanel extends JPanel{
         this.setBackground(Color.BLACK);
         this.setDoubleBuffered(true);
 
-        this.addKeyListener(new KeyAdapter() {
-            private boolean leftPressed = false;
-            private boolean rightPressed = false;
+        // Configurar el InputMap y ActionMap
+        InputMap inputMap = this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap actionMap = this.getActionMap();
 
-            @Override
-            public void keyPressed(KeyEvent e) {
-                switch (e.getKeyCode()) {
-                    case KeyEvent.VK_LEFT:
-                    case KeyEvent.VK_A:
-                        if (!leftPressed) {
-                            GamePanel.this.connection.move("left");
-                            leftPressed = true;
-                        }
-                        break;
-                    case KeyEvent.VK_RIGHT:
-                    case KeyEvent.VK_D:
-                        if (!rightPressed) {
-                            GamePanel.this.connection.move("right");
-                            rightPressed = true;
-                        }
-                        break;
-                    case KeyEvent.VK_SPACE:
-                    case KeyEvent.VK_UP:
-                    case KeyEvent.VK_W:
-                        GamePanel.this.connection.jump();
-                        break;
-                }
-            }
+        // Variables para controlar el estado de las teclas
+        final boolean[] leftPressed = {false};
+        final boolean[] rightPressed = {false};
 
+        // ========== MOVIMIENTO IZQUIERDA ==========
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0, false), "leftPressed");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0, false), "leftPressed");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0, true), "leftReleased");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0, true), "leftReleased");
+
+        actionMap.put("leftPressed", new AbstractAction() {
             @Override
-            public void keyReleased(KeyEvent e) {
-                switch (e.getKeyCode()) {
-                    case KeyEvent.VK_LEFT:
-                    case KeyEvent.VK_A:
-                        leftPressed = false;
-                        GamePanel.this.connection.move("stop");
-                        break;
-                    case KeyEvent.VK_RIGHT:
-                    case KeyEvent.VK_D:
-                        rightPressed = false;
-                        GamePanel.this.connection.move("stop");
-                        break;
+            public void actionPerformed(ActionEvent e) {
+                if (!leftPressed[0]) {
+                    GamePanel.this.connection.move("left");
+                    leftPressed[0] = true;
                 }
             }
         });
 
-        this.setFocusable(true);
-        this.requestFocus();
+        actionMap.put("leftReleased", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                leftPressed[0] = false;
+                GamePanel.this.connection.move("stop");
+            }
+        });
+
+        // ========== MOVIMIENTO DERECHA ==========
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0, false), "rightPressed");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, 0, false), "rightPressed");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0, true), "rightReleased");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_D, 0, true), "rightReleased");
+
+        actionMap.put("rightPressed", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (!rightPressed[0]) {
+                    GamePanel.this.connection.move("right");
+                    rightPressed[0] = true;
+                }
+            }
+        });
+
+        actionMap.put("rightReleased", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                rightPressed[0] = false;
+                GamePanel.this.connection.move("stop");
+            }
+        });
+
+        // ========== SALTO ==========
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0, false), "jump");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0, false), "jump");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_W, 0, false), "jump");
+
+        actionMap.put("jump", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                GamePanel.this.connection.jump();
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0, false), "pausePressed");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0, false), "pausePressed");
+        actionMap.put("pausePressed", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                GamePanel.this.setStateGame(GameState.MENU);
+                repaint();
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_S, 0, false), "exitPressed");
+        actionMap.put("exitPressed", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if(GamePanel.this.gameState != GameState.MENU) return;
+                GamePanel.this.connection.leaveRoom();
+                GamePanel.this.navigationManager.navigateBack();
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_R, 0, false), "resumePressed");
+        actionMap.put("resumePressed", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if(GamePanel.this.gameState != GameState.MENU) return;
+                GamePanel.this.setStateGame(GameState.RUNNING);
+                repaint();
+            }
+        });
     }
 
 
@@ -131,23 +176,6 @@ public class GamePanel extends JPanel{
     public void setStateGame(GameState gameState) {
         this.gameState = gameState;
     }
-
-    public void updateGame(){
-
-        if ((gameState == GameState.MENU || gameState == GameState.WINNER) && ioEventsCompact.isExitPressed()) {
-            //this.connection.enqueueMessage(new JSONObject().put("action", "exit"));
-            this.navigationManager.navigateBack();
-        }
-
-        if (ioEventsCompact.isResumePressed()) {
-            gameState = GameState.RUNNING;
-        }
-
-        if (ioEventsCompact.isMenuPressed()) {
-            gameState = GameState.MENU;
-        }
-    }
-
 
     @Override
     public void paintComponent(Graphics g) {
