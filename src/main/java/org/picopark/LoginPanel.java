@@ -72,6 +72,7 @@ public class LoginPanel extends JPanel{
 
     public void updateUI(String message, Color color){
         System.out.println(message);
+        JOptionPane.showMessageDialog(this, message, "Mensaje", JOptionPane.INFORMATION_MESSAGE);
     }
 
 

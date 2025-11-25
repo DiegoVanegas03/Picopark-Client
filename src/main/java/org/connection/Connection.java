@@ -360,9 +360,10 @@ public class Connection extends WebSocketClient {
     public Map<String, PlatformData> getPlatforms() {
         return platforms;
     }
-
+    
 
     public void authenticate(String username, String password) {
+        System.out.println("Enviando autenticación para usuario: " + username);
         Map<String, String> data = new HashMap<>();
         data.put("username", username);
         data.put("password", password);
