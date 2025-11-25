@@ -50,6 +50,11 @@ public class LoginPanel extends JPanel{
             String pass = txtPass.getText();
             if(user.isEmpty() || pass.isEmpty()) {
                 JOptionPane.showMessageDialog(null, "Ingrese sus datos");
+                return;
+            }
+            if (!connection.isConnected()) {
+                JOptionPane.showMessageDialog(null, "Conectando al servidor, espere un momento...");
+                return;
             }
             connection.authenticate(user,pass);
         });

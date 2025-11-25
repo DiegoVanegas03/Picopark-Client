@@ -362,6 +362,10 @@ public class Connection extends WebSocketClient {
     }
     
 
+    public boolean isConnected() {
+        return isOpen();
+    }
+
     public void authenticate(String username, String password) {
         System.out.println("Enviando autenticación para usuario: " + username);
         Map<String, String> data = new HashMap<>();
