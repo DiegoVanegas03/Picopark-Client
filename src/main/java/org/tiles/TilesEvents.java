@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.util.Objects;
 
 public class TilesEvents {
-    private final int maxTiles = 50;
+    private final int maxTiles = 51;
     private BufferedImage[] tiles = new BufferedImage[maxTiles];
 
     private final GamePanel gp;
@@ -42,6 +42,7 @@ public class TilesEvents {
             for(int i = 32; i <= 39; i++) {
                 this.tiles[i] = this.tiles[31];
             }
+            this.tiles[50] = ImageIO.read((Objects.requireNonNull(this.getClass().getResourceAsStream("/assets-tiles/llave.png"))));
         } catch(IOException e){
             e.printStackTrace();
         }
@@ -65,8 +66,8 @@ public class TilesEvents {
             indexTile = codeMapsTiles[ren][col];
 
             // NO renderizar tiles 31-39 (son plataformas dinámicas, no tiles estáticos)
-            // tampoco 30 (destino invisible) ni 50 (llave)
-            if(indexTile != 0 && indexTile != 30 && indexTile != 40 && indexTile != 50 &&
+            // tampoco 30 (destino invisible)
+            if(indexTile != 0 && indexTile != 30 && indexTile != 40 &&
                !(indexTile >= 31 && indexTile <= 39)) {
                 
                 // Si es una puerta (12-14) y el nivel requiere llave pero la puerta no está abierta,
