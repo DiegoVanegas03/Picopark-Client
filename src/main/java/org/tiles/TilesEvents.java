@@ -66,8 +66,8 @@ public class TilesEvents {
             indexTile = codeMapsTiles[ren][col];
 
             // NO renderizar tiles 31-39 (son plataformas dinámicas, no tiles estáticos)
-            // tampoco 30 (destino invisible)
-            if(indexTile != 0 && indexTile != 30 && indexTile != 40 &&
+            // tampoco 30 (destino invisible), 40, 50 (llave, se dibuja como objeto)
+            if(indexTile != 0 && indexTile != 30 && indexTile != 40 && indexTile != 50 &&
                !(indexTile >= 31 && indexTile <= 39)) {
                 
                 // Si es una puerta (12-14) y el nivel requiere llave pero la puerta no está abierta,
