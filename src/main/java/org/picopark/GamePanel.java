@@ -32,6 +32,7 @@ public class GamePanel extends JPanel{
 
     private final int widthScreen = sizeTile * maxColsScreen;
     private final int heightScreen = sizeTile * maxRowsScreen;
+    private final int chatWidth = 280;
 
     int widthWorld;
     int heightWorld;
@@ -65,6 +66,7 @@ public class GamePanel extends JPanel{
     private JTextArea chatArea;
     private JTextField chatInput;
     private JButton sendChatButton;
+    private boolean isTypingInChat = false;
 
     public GamePanel(NavigationManager navigationManager, Connection connection) {
         this.navigationManager = navigationManager;
@@ -77,7 +79,8 @@ public class GamePanel extends JPanel{
         widthWorld = sizeTile * maxColWorld;
         heightWorld = sizeTile * maxRenWorld;
 
-        this.navigationManager.resizeWindow(widthScreen, heightScreen);
+        // Ajustar ventana para incluir el área de juego + chat
+        this.navigationManager.resizeWindow(widthScreen + chatWidth, heightScreen);
 
         this.setBackground(new Color(247, 247, 247));
         this.setDoubleBuffered(true);
@@ -103,7 +106,7 @@ public class GamePanel extends JPanel{
         actionMap.put("leftPressed", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (chatPanel.isVisible()) return;
+                if (isTypingInChat) return; // Bloquear si está escribiendo en el chat
                 if (!leftPressed[0]) {
                     GamePanel.this.connection.move("left");
                     GamePanel.this.connection.predictMove("left");
@@ -115,7 +118,7 @@ public class GamePanel extends JPanel{
         actionMap.put("leftReleased", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (chatPanel.isVisible()) return;
+                if (isTypingInChat) return;
                 leftPressed[0] = false;
                 GamePanel.this.connection.move("stop");
                 GamePanel.this.connection.predictMove("stop");
@@ -131,7 +134,7 @@ public class GamePanel extends JPanel{
         actionMap.put("rightPressed", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (chatPanel.isVisible()) return;
+                if (isTypingInChat) return;
                 if (!rightPressed[0]) {
                     GamePanel.this.connection.move("right");
                     GamePanel.this.connection.predictMove("right");
@@ -143,7 +146,7 @@ public class GamePanel extends JPanel{
         actionMap.put("rightReleased", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (chatPanel.isVisible()) return;
+                if (isTypingInChat) return;
                 rightPressed[0] = false;
                 GamePanel.this.connection.move("stop");
                 GamePanel.this.connection.predictMove("stop");
@@ -158,7 +161,7 @@ public class GamePanel extends JPanel{
         actionMap.put("jump", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (chatPanel.isVisible()) return;
+                if (isTypingInChat) return;
                 GamePanel.this.connection.jump();
             }
         });
@@ -168,6 +171,7 @@ public class GamePanel extends JPanel{
         actionMap.put("pausePressed", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (isTypingInChat) return;
                 GamePanel.this.setStateGame(GameState.MENU);
                 repaint();
             }
@@ -177,6 +181,7 @@ public class GamePanel extends JPanel{
         actionMap.put("exitPressed", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (isTypingInChat) return;
                 if(GamePanel.this.gameState != GameState.MENU && GamePanel.this.gameState != GameState.WINNER) return;
                 GamePanel.this.connection.leaveRoom();
                 GamePanel.this.navigationManager.navigateBack();
@@ -187,17 +192,10 @@ public class GamePanel extends JPanel{
         actionMap.put("resumePressed", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (isTypingInChat) return;
                 if(GamePanel.this.gameState != GameState.MENU) return;
                 GamePanel.this.setStateGame(GameState.RUNNING);
                 repaint();
-            }
-        });
-
-        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, 0, false), "toggleChat");
-        actionMap.put("toggleChat", new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                GamePanel.this.toggleChat();
             }
         });
     }
@@ -217,12 +215,12 @@ public class GamePanel extends JPanel{
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2d = (Graphics2D) g;
-        
+
         if(gameState == GameState.WINNER) {
             drawWinOverlay(g2d);
             return;
         }
-        
+
         if(gameState == GameState.GAME_OVER){
             try{
                 BufferedImage image = ImageIO
@@ -254,9 +252,9 @@ public class GamePanel extends JPanel{
         if(cameraY > this.heightWorld - this.heightScreen) cameraY = this.heightWorld - this.heightScreen;
 
         tilesEvents.draw(g2d, (int)cameraX, (int)cameraY, this.connection.getCurrentWorld(),
-                         this.connection.requiresKey(),
-                         this.connection.getCurrentPlayer() != null && this.connection.getCurrentPlayer().hasKey,
-                         this.connection.isDoorOpen());
+                this.connection.requiresKey(),
+                this.connection.getCurrentPlayer() != null && this.connection.getCurrentPlayer().hasKey,
+                this.connection.isDoorOpen());
 
         // Dibujar plataformas móviles
         for (org.connection.PlatformData platform : this.connection.getPlatforms()) {
@@ -265,28 +263,28 @@ public class GamePanel extends JPanel{
 
             // Verificar si está en viewport
             if (platform.x + platform.width > cameraX &&
-                platform.x - platform.width < cameraX + widthScreen &&
-                platform.y + platform.height > cameraY &&
-                platform.y - platform.height < cameraY + heightScreen) {
-                
+                    platform.x - platform.width < cameraX + widthScreen &&
+                    platform.y + platform.height > cameraY &&
+                    platform.y - platform.height < cameraY + heightScreen) {
+
                 // Dibujar plataforma (rectángulo de color según tipo)
                 Color platformColor = new Color(100, 150, 255, 200); // Azul semi-transparente
                 g2d.setColor(platformColor);
                 g2d.fillRect((int)screenX, (int)screenY, (int)platform.width, (int)platform.height);
-                
+
                 // Borde para mejor visibilidad
                 g2d.setColor(Color.BLUE);
                 g2d.setStroke(new BasicStroke(2));
                 g2d.drawRect((int)screenX, (int)screenY, (int)platform.width, (int)platform.height);
-                
+
                 // Dibujar contador de jugadores necesarios al centro
                 String counterText = String.valueOf(Math.max(0, platform.playersNeeded));
                 Font counterFont = new Font("Arial", Font.BOLD, 20);
                 FontMetrics fm = g2d.getFontMetrics(counterFont);
-                
+
                 int textX = (int)(screenX + (platform.width - fm.stringWidth(counterText)) / 2);
                 int textY = (int)(screenY + ((platform.height - fm.getHeight()) / 2) + fm.getAscent());
-                
+
                 // Sombra del texto para mejor legibilidad
                 g2d.setColor(new Color(0, 0, 0, 150));
                 g2d.drawString(counterText, textX + 1, textY + 1);
@@ -304,17 +302,17 @@ public class GamePanel extends JPanel{
 
             // Verificar si está en viewport
             if (key.x + keySize > cameraX &&
-                key.x - keySize < cameraX + widthScreen &&
-                key.y + keySize > cameraY &&
-                key.y - keySize < cameraY + heightScreen) {
+                    key.x - keySize < cameraX + widthScreen &&
+                    key.y + keySize > cameraY &&
+                    key.y - keySize < cameraY + heightScreen) {
 
                 try {
                     BufferedImage keySprite = ImageIO.read(Objects.requireNonNull(this.getClass().
                             getResourceAsStream("/assets-tiles/llave.png")));
-                    
+
                     // Aplicar offset flotante
                     float drawY = screenY + key.floatOffset;
-                    
+
                     // Animación de apertura de puerta (brillo)
                     if (key.isOpeningDoor) {
                         // Efecto de brillo pulsante
@@ -322,12 +320,12 @@ public class GamePanel extends JPanel{
                         float brightness = (float) Math.sin(timeSinceOpen * 0.00628) * 0.5f + 0.5f;
                         g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f + brightness * 0.7f));
                     }
-                    
+
                     g2d.drawImage(keySprite, (int)screenX, (int)drawY, keySize, keySize, null);
-                    
+
                     // Resetear composite
                     g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
-                    
+
                 } catch (IOException e) {
                     // Fallback: dibujar un rectángulo dorado más grande
                     g2d.setColor(Color.YELLOW);
@@ -350,9 +348,9 @@ public class GamePanel extends JPanel{
 
             if(
                     worldX + sizeTile > cameraX &&
-                    worldX - sizeTile < cameraX + widthScreen &&
-                    worldY + sizeTile > cameraY &&
-                    worldY - sizeTile < cameraY + heightScreen
+                            worldX - sizeTile < cameraX + widthScreen &&
+                            worldY + sizeTile > cameraY &&
+                            worldY - sizeTile < cameraY + heightScreen
             ) {
                 g2d.drawImage(sprite, (int)screenX,(int)screenY, sizeTile, sizeTile, null);
                 Font originalFont = g.getFont();
@@ -513,7 +511,7 @@ public class GamePanel extends JPanel{
         g2d.setColor(textColor);
         g2d.drawString(overlayLeftText, 10, 20);
 
-        // ---- Texto derecha: Pausar juego ----
+        // ---- Texto derecha: Info de controles ----
         String labelResume = "Presiona 'M' o 'ESCAPE' para pausar el juego.";
         int textWidth = fm.stringWidth(labelResume);
 
@@ -541,24 +539,58 @@ public class GamePanel extends JPanel{
     }
 
     private void createChatPanel() {
-        chatPanel = new JPanel();
-        chatPanel.setLayout(new BorderLayout());
-        chatPanel.setBounds(widthScreen - 300, heightScreen - 200, 300, 200);
-        chatPanel.setBorder(BorderFactory.createTitledBorder("Chat"));
-        chatPanel.setVisible(false); // Inicialmente oculto
+        // Panel de chat al lado derecho del área de juego
+        int chatHeight = heightScreen - 30; // Margen mayor para evitar desbordamiento
+        int chatX = widthScreen; // Justo después del área de juego
+        int chatY = 10; // Margen superior
 
+        chatPanel = new JPanel();
+        chatPanel.setLayout(new BorderLayout(5, 5));
+        chatPanel.setBounds(chatX, chatY, chatWidth, chatHeight);
+        chatPanel.setBorder(BorderFactory.createTitledBorder("Chat"));
+        chatPanel.setBackground(new Color(240, 240, 240));
+        chatPanel.setVisible(true); // Siempre visible
+
+        // Área de mensajes con scroll
         chatArea = new JTextArea();
         chatArea.setEditable(false);
         chatArea.setLineWrap(true);
         chatArea.setWrapStyleWord(true);
+        chatArea.setFont(new Font("Arial", Font.PLAIN, 12));
+        chatArea.setMargin(new Insets(5, 5, 5, 5));
         JScrollPane scrollPane = new JScrollPane(chatArea);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         chatPanel.add(scrollPane, BorderLayout.CENTER);
 
-        JPanel inputPanel = new JPanel(new BorderLayout());
+        // Panel inferior con input y botón
+        JPanel inputPanel = new JPanel(new BorderLayout(5, 0));
+        inputPanel.setBackground(new Color(240, 240, 240));
+
         chatInput = new JTextField();
-        sendChatButton = new JButton("Enviar");
+        chatInput.setFont(new Font("Arial", Font.PLAIN, 12));
+
+        // Listeners para detectar cuando se está escribiendo en el chat
+        chatInput.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                isTypingInChat = true;
+            }
+
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                isTypingInChat = false;
+            }
+        });
+
+        sendChatButton = new JButton("►");
+        sendChatButton.setFocusable(false);
+        sendChatButton.setPreferredSize(new Dimension(45, 25));
+        sendChatButton.setToolTipText("Enviar mensaje");
+
         inputPanel.add(chatInput, BorderLayout.CENTER);
         inputPanel.add(sendChatButton, BorderLayout.EAST);
+        inputPanel.setBorder(BorderFactory.createEmptyBorder(3, 5, 3, 5));
+
         chatPanel.add(inputPanel, BorderLayout.SOUTH);
 
         // Eventos
@@ -573,15 +605,9 @@ public class GamePanel extends JPanel{
         if (!message.isEmpty()) {
             connection.sendChat(message);
             chatInput.setText("");
+            // Devolver el foco al panel principal para que funcionen los controles
+            GamePanel.this.requestFocusInWindow();
         }
-    }
-
-    private void toggleChat() {
-        chatPanel.setVisible(!chatPanel.isVisible());
-        if (chatPanel.isVisible()) {
-            chatInput.requestFocus();
-        }
-        repaint();
     }
 
     public void gameOver(String gameOverBy) {
