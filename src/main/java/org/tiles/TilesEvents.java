@@ -57,6 +57,26 @@ public class TilesEvents {
         
         int maxRen = codeMapsTiles.length;
         int maxCol = codeMapsTiles[0].length;
+
+        // Calcular bounding box de la puerta si requiere llave
+        int doorMinRen = Integer.MAX_VALUE;
+        int doorMaxRen = Integer.MIN_VALUE;
+        int doorMinCol = Integer.MAX_VALUE;
+        int doorMaxCol = Integer.MIN_VALUE;
+        if (requiresKey && !doorOpen) {
+            for (int r = 0; r < maxRen; r++) {
+                for (int c = 0; c < maxCol; c++) {
+                    int tile = codeMapsTiles[r][c];
+                    if (tile >= 12 && tile <= 14) {
+                        doorMinRen = Math.min(doorMinRen, r);
+                        doorMaxRen = Math.max(doorMaxRen, r);
+                        doorMinCol = Math.min(doorMinCol, c);
+                        doorMaxCol = Math.max(doorMaxCol, c);
+                    }
+                }
+            }
+        }
+        
         int ren = 0, col = 0;
         int screenX, screenY;
         int worldX, worldY;
@@ -70,11 +90,22 @@ public class TilesEvents {
             if(indexTile != 0 && indexTile != 30 && indexTile != 40 && indexTile != 50 &&
                !(indexTile >= 31 && indexTile <= 39)) {
                 
-                // Si es una puerta (12-14) y el nivel requiere llave pero la puerta no está abierta,
-                // mostrar puerta cerrada (8-11)
                 int actualTile = indexTile;
                 if (requiresKey && !doorOpen && indexTile >= 12 && indexTile <= 14) {
-                    actualTile = indexTile - 4; // 12->8, 13->9, 14->10
+                    // Determinar tile cerrado basado en posición
+                    if (ren == doorMinRen && col == doorMinCol) {
+                        actualTile = 10; // Puerta3 - Superior izquierda
+                    } else if (ren == doorMinRen && col == doorMaxCol) {
+                        actualTile = 11; // Puerta4 - Superior derecha
+                    } else if (ren == doorMaxRen && col == doorMinCol) {
+                        actualTile = 9; // Puerta2 - Abajo izquierda
+                    } else if (ren == doorMaxRen && col == doorMaxCol) {
+                        actualTile = 8; // Puerta1 - Abajo derecha
+                    } else if (ren == doorMaxRen) {
+                        actualTile = 8; // Puerta1 - Abajo
+                    } else {
+                        actualTile = 8; // Default Puerta1
+                    }
                 }
                 
                 worldX = col * gp.getSizeTile();
