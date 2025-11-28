@@ -1,0 +1,81 @@
+%% Diagrama de Arquitectura del Cliente Picopark
+flowchart LR
+    subgraph ClienteJava["Aplicación Cliente Java/Swing"]
+        subgraph JFrameMain["JFrame Principal"]
+            Main[Main.java]
+            NavigationManager[NavigationManager.java]
+        end
+
+        subgraph PanelesUI["Paneles de Interfaz"]
+            LoginPanel[LoginPanel.java]
+            RoomsPanel[RoomsPanel.java]
+            GamePanel[GamePanel.java]
+        end
+
+        subgraph ConexionWebSocket["Conexión WebSocket"]
+            Connection[Connection.java]
+        end
+
+        subgraph DatosJuego["Datos del Juego"]
+            PlayerData[PlayerData.java]
+            PlatformData[PlatformData.java]
+            KeyData[KeyData.java]
+            RoomInfo[RoomInfo.java]
+        end
+
+        subgraph Renderizado["Sistema de Renderizado"]
+            TilesEvents[TilesEvents.java]
+            AssetsTiles[Assets Tiles]
+            AssetsLogin[Assets Login]
+            AssetsEntities[Assets Entities]
+        end
+    end
+
+    ServidorWebSocket[Servidor WebSocket]
+
+    %% Flujos principales
+    Main --> NavigationManager
+    NavigationManager --> LoginPanel
+    NavigationManager --> RoomsPanel
+    NavigationManager --> GamePanel
+
+    LoginPanel --> Connection
+    RoomsPanel --> Connection
+    GamePanel --> Connection
+
+    Connection --> PlayerData
+    Connection --> PlatformData
+    Connection --> KeyData
+    Connection --> RoomInfo
+
+    GamePanel --> TilesEvents
+    TilesEvents --> AssetsTiles
+    LoginPanel --> AssetsLogin
+    GamePanel --> AssetsEntities
+
+    Connection -- ws://ip/ws --> ServidorWebSocket
+
+    %% Agrupaciones visuales y colores variados
+    classDef ui fill:#b3e5fc,stroke:#0288d1,stroke-width:2px;
+    classDef conexion fill:#ffe082,stroke:#fbc02d,stroke-width:2px;
+    classDef datos fill:#c8e6c9,stroke:#388e3c,stroke-width:2px;
+    classDef render fill:#ffe0b2,stroke:#e65100,stroke-width:2px;
+    classDef cliente fill:#f8bbd0,stroke:#ad1457,stroke-width:2px;
+    classDef servidor fill:#d1c4e9,stroke:#6a1b9a,stroke-width:2px;
+    classDef frame fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
+    classDef paneles fill:#fff3e0,stroke:#e65100,stroke-width:2px;
+    classDef conn fill:#f3e5f5,stroke:#4a148c,stroke-width:2px;
+    classDef data fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px;
+    classDef rend fill:#fce4ec,stroke:#880e4f,stroke-width:2px;
+
+    class Main,NavigationManager,LoginPanel,RoomsPanel,GamePanel ui;
+    class Connection conexion;
+    class PlayerData,PlatformData,KeyData,RoomInfo datos;
+    class TilesEvents,AssetsTiles,AssetsLogin,AssetsEntities render;
+    class ClienteJava cliente;
+    class JFrameMain frame;
+    class PanelesUI paneles;
+    class ConexionWebSocket conn;
+    class DatosJuego data;
+    class Renderizado rend;
+    class ServidorWebSocket servidor;

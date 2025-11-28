@@ -1,0 +1,27 @@
+%% Arquitectura Simplificada del Sistema Picopark
+flowchart TD
+    subgraph Cliente["Cliente"]
+        AppJava["Aplicación Java/Swing<br/>Main.java, Panels, Connection"]
+    end
+
+    subgraph Servidor["Servidor"]
+        WebSocketServer["WebSocket Server<br/>GameWebSocketServer"]
+        GameLogic["Lógica del Juego<br/>GameRoom, Player, Platform, Key"]
+        DB["Base de Datos<br/>MySQL: users, game data"]
+    end
+
+    AppJava -->|WebSocket| WebSocketServer
+    WebSocketServer --> GameLogic
+    GameLogic --> DB
+    DB --> GameLogic
+    GameLogic --> WebSocketServer
+    WebSocketServer --> AppJava
+
+    %% Colores
+    classDef cliente fill:#b3e5fc,stroke:#0288d1,stroke-width:2px;
+    classDef servidor fill:#ffe0b2,stroke:#e65100,stroke-width:2px;
+    classDef db fill:#c8e6c9,stroke:#388e3c,stroke-width:2px;
+
+    class AppJava cliente;
+    class WebSocketServer,GameLogic servidor;
+    class DB db;

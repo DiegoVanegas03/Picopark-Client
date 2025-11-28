@@ -60,6 +60,12 @@ public class GamePanel extends JPanel{
     private final Connection connection;
     TilesEvents tilesEvents = new TilesEvents(this);;
 
+    // Chat components
+    private JPanel chatPanel;
+    private JTextArea chatArea;
+    private JTextField chatInput;
+    private JButton sendChatButton;
+
     public GamePanel(NavigationManager navigationManager, Connection connection) {
         this.navigationManager = navigationManager;
         this.connection = connection;
@@ -75,6 +81,10 @@ public class GamePanel extends JPanel{
 
         this.setBackground(new Color(247, 247, 247));
         this.setDoubleBuffered(true);
+        this.setLayout(null);
+
+        // Crear panel de chat
+        createChatPanel();
 
         // Configurar el InputMap y ActionMap
         InputMap inputMap = this.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
@@ -93,6 +103,7 @@ public class GamePanel extends JPanel{
         actionMap.put("leftPressed", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (chatPanel.isVisible()) return;
                 if (!leftPressed[0]) {
                     GamePanel.this.connection.move("left");
                     GamePanel.this.connection.predictMove("left");
@@ -104,6 +115,7 @@ public class GamePanel extends JPanel{
         actionMap.put("leftReleased", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (chatPanel.isVisible()) return;
                 leftPressed[0] = false;
                 GamePanel.this.connection.move("stop");
                 GamePanel.this.connection.predictMove("stop");
@@ -119,6 +131,7 @@ public class GamePanel extends JPanel{
         actionMap.put("rightPressed", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (chatPanel.isVisible()) return;
                 if (!rightPressed[0]) {
                     GamePanel.this.connection.move("right");
                     GamePanel.this.connection.predictMove("right");
@@ -130,6 +143,7 @@ public class GamePanel extends JPanel{
         actionMap.put("rightReleased", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (chatPanel.isVisible()) return;
                 rightPressed[0] = false;
                 GamePanel.this.connection.move("stop");
                 GamePanel.this.connection.predictMove("stop");
@@ -144,6 +158,7 @@ public class GamePanel extends JPanel{
         actionMap.put("jump", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (chatPanel.isVisible()) return;
                 GamePanel.this.connection.jump();
             }
         });
@@ -175,6 +190,14 @@ public class GamePanel extends JPanel{
                 if(GamePanel.this.gameState != GameState.MENU) return;
                 GamePanel.this.setStateGame(GameState.RUNNING);
                 repaint();
+            }
+        });
+
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_C, 0, false), "toggleChat");
+        actionMap.put("toggleChat", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                GamePanel.this.toggleChat();
             }
         });
     }
@@ -508,7 +531,58 @@ public class GamePanel extends JPanel{
         g2d.setFont(originalFont);
     }
 
-    public void addChatMessage(String user, String message) {}
+    public void addChatMessage(String user, String message) {
+        if (chatArea != null) {
+            SwingUtilities.invokeLater(() -> {
+                chatArea.append(user + ": " + message + "\n");
+                chatArea.setCaretPosition(chatArea.getDocument().getLength());
+            });
+        }
+    }
+
+    private void createChatPanel() {
+        chatPanel = new JPanel();
+        chatPanel.setLayout(new BorderLayout());
+        chatPanel.setBounds(widthScreen - 300, heightScreen - 200, 300, 200);
+        chatPanel.setBorder(BorderFactory.createTitledBorder("Chat"));
+        chatPanel.setVisible(false); // Inicialmente oculto
+
+        chatArea = new JTextArea();
+        chatArea.setEditable(false);
+        chatArea.setLineWrap(true);
+        chatArea.setWrapStyleWord(true);
+        JScrollPane scrollPane = new JScrollPane(chatArea);
+        chatPanel.add(scrollPane, BorderLayout.CENTER);
+
+        JPanel inputPanel = new JPanel(new BorderLayout());
+        chatInput = new JTextField();
+        sendChatButton = new JButton("Enviar");
+        inputPanel.add(chatInput, BorderLayout.CENTER);
+        inputPanel.add(sendChatButton, BorderLayout.EAST);
+        chatPanel.add(inputPanel, BorderLayout.SOUTH);
+
+        // Eventos
+        sendChatButton.addActionListener(e -> sendChatMessage());
+        chatInput.addActionListener(e -> sendChatMessage());
+
+        this.add(chatPanel);
+    }
+
+    private void sendChatMessage() {
+        String message = chatInput.getText().trim();
+        if (!message.isEmpty()) {
+            connection.sendChat(message);
+            chatInput.setText("");
+        }
+    }
+
+    private void toggleChat() {
+        chatPanel.setVisible(!chatPanel.isVisible());
+        if (chatPanel.isVisible()) {
+            chatInput.requestFocus();
+        }
+        repaint();
+    }
 
     public void gameOver(String gameOverBy) {
         this.gameState = GameState.GAME_OVER;
